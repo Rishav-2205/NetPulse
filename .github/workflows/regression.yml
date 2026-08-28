@@ -3,6 +3,8 @@ name: NetPulse Main Regression & Performance Pipeline
 on:
   push:
     branches: [main, master]
+  pull_request:
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
@@ -18,6 +20,11 @@ jobs:
         with:
           python-version: "3.12"
           cache: "pip"
+
+      - name: Install System Networking Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tcpdump libpcap-dev
 
       - name: Install dependencies & package
         run: |

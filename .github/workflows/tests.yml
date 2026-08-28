@@ -50,6 +50,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
 
+      - name: Install System Networking Dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tcpdump libpcap-dev
+
       - name: Install dependencies & package
         run: |
           python -m pip install --upgrade pip
