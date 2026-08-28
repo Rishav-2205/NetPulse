@@ -32,15 +32,16 @@ import { Button } from '../../components/ui/Button';
 import { testService } from '../../services/testService';
 import { performanceService } from '../../services/performanceService';
 import { TestRun, BenchmarkMetrics } from '../../types';
+import { mockTestRuns, mockBenchmarkHistory } from '../../mock/mockData';
 import { useAppStore } from '../../stores/useAppStore';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { addNotification } = useAppStore();
 
-  const [runs, setRuns] = useState<TestRun[]>([]);
-  const [benchmarks, setBenchmarks] = useState<BenchmarkMetrics[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [runs, setRuns] = useState<TestRun[]>(mockTestRuns);
+  const [benchmarks, setBenchmarks] = useState<BenchmarkMetrics[]>(mockBenchmarkHistory);
+  const [, setLoading] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {

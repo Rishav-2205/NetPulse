@@ -8,14 +8,15 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { testService } from '../../services/testService';
 import { TestRun } from '../../types';
+import { mockTestRuns } from '../../mock/mockData';
 import { useAppStore } from '../../stores/useAppStore';
 
 export const TestRunsPage: React.FC = () => {
   const navigate = useNavigate();
   const { addNotification } = useAppStore();
 
-  const [runs, setRuns] = useState<TestRun[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [runs, setRuns] = useState<TestRun[]>(mockTestRuns);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [protocolFilter, setProtocolFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
