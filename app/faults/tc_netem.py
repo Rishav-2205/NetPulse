@@ -9,7 +9,6 @@ and bandwidth rate-limiting on virtual Ethernet interfaces.
 import subprocess
 from typing import Optional
 
-from app.core.exceptions import TopologyError
 from app.core.logging import get_logger
 from app.faults.models import FaultConfig
 from app.topology.namespace import NetworkNamespaceManager, has_net_admin_capability
@@ -62,13 +61,17 @@ class TCNetemController:
         cmd = ["tc", "qdisc", "add", "dev", iface, "root"] + netem_args
 
         if ns_name:
+            if not NetworkNamespaceManager.namespace_exists(ns_name):
+                logger.debug(f"Namespace '{ns_name}' does not exist. Skipping kernel tc netem.")
+                return False
             code, _, stderr = NetworkNamespaceManager.exec_in_namespace(ns_name, cmd)
         else:
             res = subprocess.run(cmd, capture_output=True, text=True)
             code, stderr = res.returncode, res.stderr
 
         if code != 0:
-            raise TopologyError(f"Failed to apply tc netem rule to '{iface}': {stderr.strip()}")
+            logger.warning(f"tc netem command failed on '{iface}': {stderr.strip()}")
+            return False
 
         logger.info(f"Applied tc netem to '{iface}' (ns={ns_name}): {' '.join(netem_args)}")
         return True
@@ -81,6 +84,8 @@ class TCNetemController:
 
         cmd = ["tc", "qdisc", "del", "dev", iface, "root"]
         if ns_name:
+            if not NetworkNamespaceManager.namespace_exists(ns_name):
+                return True
             code, _, _ = NetworkNamespaceManager.exec_in_namespace(ns_name, cmd)
             return code == 0
         else:

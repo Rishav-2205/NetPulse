@@ -58,7 +58,14 @@ class FaultInjector:
         mode = "KERNEL_TC_NETEM" if has_net_admin_capability() else "USERLAND_SIMULATION"
 
         if mode == "KERNEL_TC_NETEM":
-            TCNetemController.apply_fault(interface, config, ns_name=namespace)
+            applied = TCNetemController.apply_fault(interface, config, ns_name=namespace)
+            if not applied:
+                mode = "USERLAND_SIMULATION"
+                logger.info(
+                    f"[Simulated Fault] Active impairment: latency={config.latency_ms}ms, "
+                    f"loss={config.packet_loss_percent}%, jitter={config.jitter_ms}ms, "
+                    f"bandwidth={config.bandwidth_mbps or 'unlimited'} Mbps"
+                )
         else:
             logger.info(
                 f"[Simulated Fault] Active impairment: latency={config.latency_ms}ms, "
