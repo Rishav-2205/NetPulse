@@ -3,11 +3,9 @@ NetPulse Live Control Center End-to-End Verification Script.
 Tests real HTTP requests and WebSocket interactions against the running server.
 """
 
-import asyncio
 import json
 import urllib.request
 import urllib.parse
-import sys
 
 BASE_URL = "http://127.0.0.1:8000"
 
@@ -17,17 +15,17 @@ def test_http_endpoint(endpoint: str, method: str = "GET", payload: dict = None)
     data = json.dumps(payload).encode("utf-8") if payload else None
     headers = {"Content-Type": "application/json"} if payload else {}
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
-    
+
     with urllib.request.urlopen(req, timeout=5) as response:
         status = response.status
         content_type = response.headers.get("Content-Type", "")
         raw_body = response.read()
-        
+
         if "application/json" in content_type:
             body = json.loads(raw_body.decode("utf-8"))
         else:
             body = raw_body.decode("utf-8", errors="replace")
-            
+
         print(f"  [{method}] {endpoint} -> HTTP {status} (OK)")
         return {"status": status, "body": body}
 
@@ -69,7 +67,7 @@ def main():
     print("\n[Phase 3/6] Performance Baseline & Benchmarks:")
     bench = test_http_endpoint("/api/benchmarks")
     assert "baseline" in bench["body"]
-    
+
     hist = test_http_endpoint("/api/benchmarks/history")
     print(f"    Benchmark history records: {len(hist['body'])}")
 
@@ -78,7 +76,7 @@ def main():
     topo = test_http_endpoint("/api/topology")
     assert len(topo["body"]["nodes"]) == 3
     print(f"    Topology nodes: {[n['id'] for n in topo['body']['nodes']]}")
-    print(f"    Topology links: {[l['id'] for l in topo['body']['links']]}")
+    print(f"    Topology links: {[lnk['id'] for lnk in topo['body']['links']]}")
 
     profs = test_http_endpoint("/api/faults/profiles")
     assert len(profs["body"]) > 0

@@ -20,14 +20,20 @@ dependencies = [
     "scapy>=2.5.0",
     "requests>=2.31.0",
     "psutil>=5.9.0",
-    "rich>=13.0.0"
+    "rich>=13.0.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.28.0",
+    "httpx>=0.27.0",
+    "websockets>=12.0",
+    "pydantic>=2.0.0"
 ]
 
 [project.optional-dependencies]
 dev = [
     "black>=23.0",
     "flake8>=6.0",
-    "mypy>=1.5.0"
+    "mypy>=1.5.0",
+    "ruff>=0.1.0"
 ]
 
 [project.scripts]
@@ -62,7 +68,7 @@ filterwarnings = [
 ]
 
 [tool.ruff]
-line-length = 120
+line-length = 140
 target-version = "py311"
 exclude = [
     ".git",
@@ -71,8 +77,10 @@ exclude = [
     "dist",
     "reports",
     "logs",
+    "frontend",
+    "node_modules"
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
-ignore = ["E501"]
+select = ["E", "F", "W"]
+ignore = ["E501", "E402"]

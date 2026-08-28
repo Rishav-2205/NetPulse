@@ -6,11 +6,9 @@ and conducting baseline regression comparisons with rich terminal formatting.
 """
 
 import argparse
-import os
 from pathlib import Path
 import subprocess
 import sys
-from typing import List, Optional
 
 from rich.console import Console
 from rich.table import Table
@@ -22,7 +20,7 @@ sys.path.insert(0, str(WORKSPACE_ROOT))
 
 from app.core.config import ConfigManager
 from app.core.result import SuiteResult, TestResult, TestStatus
-from app.reporting.results import BaselineManager, TestReportGenerator
+from app.reporting.results import BaselineManager
 
 console = Console()
 
@@ -134,7 +132,7 @@ def main() -> int:
 
     # Load configuration
     try:
-        cfg = ConfigManager.load(profile=args.profile if args.profile != "default" else None)
+        ConfigManager.load(profile=args.profile if args.profile != "default" else None)
         console.print(f"[bold cyan]Loaded NetPulse configuration profile:[/bold cyan] [yellow]{args.profile}[/yellow]")
     except Exception as e:
         console.print(f"[bold red]Configuration error:[/bold red] {e}")
@@ -168,7 +166,7 @@ def main() -> int:
 
     # JSON report plugin
     results_json = str(reports_dir / "results.json")
-    pytest_cmd.extend([f"--json-report", f"--json-report-file={results_json}"])
+    pytest_cmd.extend(["--json-report", f"--json-report-file={results_json}"])
 
     pytest_cmd.extend(args.test_paths)
 
