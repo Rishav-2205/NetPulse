@@ -50,3 +50,17 @@ services:
       - ../reports:/netpulse/reports
       - ../logs:/netpulse/logs
     command: ["python", "-m", "netpulse", "capture", "--packets", "20"]
+
+  # 5. Live Web Control Center & REST/WebSocket Server
+  netpulse-web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: netpulse-control-center
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../reports:/netpulse/reports
+      - ../logs:/netpulse/logs
+    command: ["netpulse", "serve", "--host", "0.0.0.0", "--port", "8000"]
+

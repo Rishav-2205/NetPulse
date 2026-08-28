@@ -63,6 +63,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent
 REPORTS_DIR = Path("reports")
 
 
@@ -560,3 +561,31 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.send_json({"event": "heartbeat_ack", "timestamp": datetime.now(timezone.utc).isoformat()})
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)
+
+
+# ------------------------------------------------------------------------------
+# 11. Static Frontend SPA Serving (when frontend/dist exists)
+# ------------------------------------------------------------------------------
+FRONTEND_DIST = WORKSPACE_ROOT / "frontend" / "dist"
+if FRONTEND_DIST.exists():
+    from fastapi.staticfiles import StaticFiles
+
+    assets_dir = FRONTEND_DIST / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        # Exclude API endpoints from fallback
+        if full_path.startswith("api/") or full_path.startswith("ws"):
+            raise HTTPException(status_code=404, detail="Endpoint not found")
+
+        file_path = FRONTEND_DIST / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+
+        index_file = FRONTEND_DIST / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+        raise HTTPException(status_code=404, detail="Frontend build not found")
+
