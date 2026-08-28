@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # Standard unprivileged test runner
+  netpulse-test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: netpulse-test-runner
+    volumes:
+      - ../reports:/netpulse/reports
+      - ../logs:/netpulse/logs
+    environment:
+      - NETPULSE_NETWORK_TCP_TIMEOUT=5.0
+      - NETPULSE_NETWORK_UDP_TIMEOUT=3.0
+    command: ["pytest", "-v"]
+
+  # Privileged runner with CAP_NET_RAW capability for raw socket operations
+  netpulse-raw-capable:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: netpulse-raw-runner
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    volumes:
+      - ../reports:/netpulse/reports
+      - ../logs:/netpulse/logs
+    command: ["pytest", "-v", "-m", "not slow"]

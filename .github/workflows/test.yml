@@ -1,0 +1,60 @@
+name: NetPulse CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Test Suite (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install System Networking Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tcpdump libpcap-dev
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Run Test Suite & Generate Reports
+        run: |
+          pytest -v \
+            --html=reports/report.html \
+            --self-contained-html \
+            --junitxml=reports/junit.xml \
+            --json-report \
+            --json-report-file=reports/results.json
+
+      - name: Run Profile CLI & Baseline Comparison
+        run: |
+          python scripts/run_tests.py --profile ci --generate-baseline
+          python scripts/run_tests.py --profile ci --compare-baseline
+
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: netpulse-test-reports-py${{ matrix.python-version }}
+          path: |
+            reports/
+            logs/
