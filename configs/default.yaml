@@ -1,0 +1,39 @@
+# NetPulse Default Configuration
+
+network:
+  tcp_timeout: 5.0
+  udp_timeout: 3.0
+  http_timeout: 5.0
+  buffer_size: 4096
+  default_host: "127.0.0.1"
+  default_port: 5001
+  tcp_nodelay: true
+  so_reuseaddr: true
+  connection_retries: 2
+  max_payload_size: 1048576
+
+testing:
+  retries: 2
+  retry_backoff_factor: 1.5
+  retry_initial_delay: 0.2
+  packet_count: 100
+  default_port: 5001
+  ephemeral_port: 0
+  duration_seconds: 5.0
+  baseline_file: "reports/baseline.json"
+  results_file: "reports/results.json"
+  junit_file: "reports/junit.xml"
+  html_report_file: "reports/report.html"
+
+logging:
+  level: "INFO"
+  file: "logs/netpulse.log"
+  json_file: "logs/netpulse.json.log"
+  console: true
+  structured: true
+
+topology:
+  default_mtu: 1500
+  default_latency_ms: 1.0
+  default_loss_pct: 0.0
+  default_bandwidth_mbps: 1000.0

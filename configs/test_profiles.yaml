@@ -1,0 +1,72 @@
+# NetPulse Test Profiles
+
+fast:
+  network:
+    tcp_timeout: 1.5
+    udp_timeout: 1.0
+    http_timeout: 2.0
+    buffer_size: 4096
+  testing:
+    retries: 1
+    retry_backoff_factor: 1.2
+    retry_initial_delay: 0.05
+    packet_count: 20
+    duration_seconds: 1.0
+  logging:
+    level: "WARNING"
+
+stress:
+  network:
+    tcp_timeout: 10.0
+    udp_timeout: 5.0
+    http_timeout: 10.0
+    buffer_size: 65536
+  testing:
+    retries: 3
+    packet_count: 1000
+    duration_seconds: 15.0
+  logging:
+    level: "INFO"
+
+ci:
+  network:
+    tcp_timeout: 5.0
+    udp_timeout: 3.0
+    http_timeout: 5.0
+    buffer_size: 8192
+  testing:
+    retries: 2
+    retry_backoff_factor: 1.5
+    retry_initial_delay: 0.1
+    packet_count: 50
+  logging:
+    level: "INFO"
+    structured: true
+
+regression:
+  network:
+    tcp_timeout: 5.0
+    udp_timeout: 3.0
+    http_timeout: 5.0
+    buffer_size: 4096
+  testing:
+    retries: 2
+    retry_backoff_factor: 1.5
+    retry_initial_delay: 0.1
+    packet_count: 100
+  logging:
+    level: "INFO"
+
+debug:
+  network:
+    tcp_timeout: 10.0
+    udp_timeout: 5.0
+    http_timeout: 10.0
+    buffer_size: 4096
+  testing:
+    retries: 0
+    packet_count: 10
+  logging:
+    level: "DEBUG"
+    console: true
+    structured: true
