@@ -5,7 +5,7 @@ Unit Tests: Network Topology Modeling.
 import pytest
 
 from app.core.exceptions import TopologyError
-from app.topology.model import NetworkTopology, Node, NodeType, Link
+from app.topology.model import NetworkTopology, Node, NodeType
 
 
 @pytest.mark.unit
@@ -15,9 +15,9 @@ class TestTopologyModel:
     def test_topology_creation_and_node_registration(self) -> None:
         """Test building nodes and links in a network topology."""
         topo = NetworkTopology(name="Test Topo")
-        n1 = topo.add_node(Node("host1", NodeType.CLIENT, "10.0.0.1"))
-        n2 = topo.add_node(Node("switch1", NodeType.SWITCH, "10.0.0.254"))
-        n3 = topo.add_node(Node("host2", NodeType.SERVER, "10.0.0.2"))
+        topo.add_node(Node("host1", NodeType.CLIENT, "10.0.0.1"))
+        topo.add_node(Node("switch1", NodeType.SWITCH, "10.0.0.254"))
+        topo.add_node(Node("host2", NodeType.SERVER, "10.0.0.2"))
 
         topo.add_link("host1", "switch1", latency_ms=0.5, mtu=1500)
         topo.add_link("switch1", "host2", latency_ms=0.5, mtu=1500)

@@ -5,7 +5,7 @@ Models simulated network topologies (Client -> Router -> Server), hop-by-hop lin
 path MTU, accumulated latency, and packet loss characteristics.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 import random
 from typing import Dict, List, Optional, Set, Tuple
@@ -197,6 +197,26 @@ class NetworkTopology:
         )
 
     @classmethod
+    def create_point_to_point(
+        cls,
+        client_ip: str = "10.0.1.10",
+        server_ip: str = "10.0.1.20",
+        latency_ms: float = 0.5,
+        mtu: int = 1500,
+        loss_pct: float = 0.0
+    ) -> "NetworkTopology":
+        """
+        Construct standard Client -> Server direct point-to-point topology.
+        """
+        topo = cls(name="Point-to-Point Model (Client -> Server)")
+        client = Node(name="client", node_type=NodeType.CLIENT, ip_address=client_ip, mac_address="00:11:22:33:44:01")
+        server = Node(name="server", node_type=NodeType.SERVER, ip_address=server_ip, mac_address="00:11:22:33:44:02")
+        topo.add_node(client)
+        topo.add_node(server)
+        topo.add_link("client", "server", latency_ms=latency_ms, mtu=mtu, packet_loss_pct=loss_pct)
+        return topo
+
+    @classmethod
     def create_standard_three_node(
         cls,
         client_to_router_latency: float = 1.0,
@@ -220,3 +240,100 @@ class NetworkTopology:
         topo.add_link("client", "router", latency_ms=client_to_router_latency, mtu=client_mtu, packet_loss_pct=loss_pct)
         topo.add_link("router", "server", latency_ms=router_to_server_latency, mtu=router_mtu, packet_loss_pct=loss_pct)
         return topo
+
+    @classmethod
+    def create_multi_server(
+        cls,
+        client_ip: str = "10.0.1.10",
+        router_ip: str = "10.0.1.1",
+        server_ips: Optional[List[str]] = None,
+        link_latencies: Optional[List[float]] = None
+    ) -> "NetworkTopology":
+        """
+        Construct Client -> Router -> Multiple Servers fan-out topology.
+        """
+        servers = server_ips or ["10.0.2.10", "10.0.3.10", "10.0.4.10"]
+        latencies = link_latencies or [1.5, 2.0, 3.0]
+
+        topo = cls(name=f"Fan-Out Topology (Client -> Router -> {len(servers)} Servers)")
+        client = Node(name="client", node_type=NodeType.CLIENT, ip_address=client_ip, mac_address="00:11:22:33:44:01")
+        router = Node(name="router", node_type=NodeType.ROUTER, ip_address=router_ip, mac_address="00:11:22:33:44:02")
+
+        topo.add_node(client)
+        topo.add_node(router)
+        topo.add_link("client", "router", latency_ms=1.0, mtu=1500)
+
+        for i, s_ip in enumerate(servers):
+            s_name = f"server_{i + 1}"
+            s_node = Node(name=s_name, node_type=NodeType.SERVER, ip_address=s_ip, mac_address=f"00:11:22:33:55:{i + 1:02d}")
+            topo.add_node(s_node)
+            lat = latencies[i % len(latencies)]
+            topo.add_link("router", s_name, latency_ms=lat, mtu=1500)
+
+        return topo
+
+
+class LinuxNamespaceTopology:
+    """
+    Helper for configuring and documenting Linux network namespace (netns) test topologies
+    using veth pairs and traffic control (tc netem) for hardware-isolated performance validation.
+    """
+
+    @staticmethod
+    def generate_setup_script(
+        ns_client: str = "netpulse_cli",
+        ns_server: str = "netpulse_srv",
+        veth_client: str = "veth-cli",
+        veth_server: str = "veth-srv",
+        client_ip: str = "10.200.1.1/24",
+        server_ip: str = "10.200.1.2/24",
+        latency_ms: float = 10.0,
+        loss_pct: Optional[float] = None,
+        loss_percent: Optional[float] = None
+    ) -> str:
+        """
+        Generate bash script commands to create isolated Linux network namespaces with veth and tc netem.
+        """
+        actual_loss = loss_percent if loss_percent is not None else (loss_pct if loss_pct is not None else 1.0)
+        return f"""#!/bin/bash
+# NetPulse Linux Namespace & Virtual Ethernet Setup
+set -e
+
+echo "[NetPulse] Creating network namespaces: {ns_client}, {ns_server}"
+ip netns add {ns_client}
+ip netns add {ns_server}
+
+echo "[NetPulse] Creating veth pair ({veth_client} <--> {veth_server})"
+ip link add {veth_client} type veth peer name {veth_server}
+
+echo "[NetPulse] Assigning veth endpoints to namespaces"
+ip link set {veth_client} netns {ns_client}
+ip link set {veth_server} netns {ns_server}
+
+echo "[NetPulse] Configuring IP addresses and bringing interfaces up"
+ip netns exec {ns_client} ip addr add {client_ip} dev {veth_client}
+ip netns exec {ns_client} ip link set {veth_client} up
+ip netns exec {ns_client} ip link set lo up
+
+ip netns exec {ns_server} ip addr add {server_ip} dev {veth_server}
+ip netns exec {ns_server} ip link set {veth_server} up
+ip netns exec {ns_server} ip link set lo up
+
+echo "[NetPulse] Applying Traffic Control (tc netem): delay {latency_ms}ms, loss {actual_loss}%"
+ip netns exec {ns_client} tc qdisc add dev {veth_client} root netem delay {latency_ms}ms loss {actual_loss}%
+
+echo "[NetPulse] Setup Complete. Run tests with: ip netns exec {ns_client} python -m netpulse benchmark"
+"""
+
+    @staticmethod
+    def generate_teardown_script(
+        ns_client: str = "netpulse_cli",
+        ns_server: str = "netpulse_srv"
+    ) -> str:
+        """Generate bash script to tear down Linux network namespaces."""
+        return f"""#!/bin/bash
+# NetPulse Linux Namespace Teardown
+ip netns del {ns_client} 2>/dev/null || true
+ip netns del {ns_server} 2>/dev/null || true
+echo "[NetPulse] Cleaned up namespaces: {ns_client}, {ns_server}"
+"""

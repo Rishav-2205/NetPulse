@@ -1,21 +1,43 @@
 version: '3.8'
 
 services:
-  # Standard unprivileged test runner
-  netpulse-test:
+  # 1. Functional Test Runner (Unprivileged)
+  netpulse-functional:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: netpulse-test-runner
+    container_name: netpulse-functional-runner
     volumes:
       - ../reports:/netpulse/reports
       - ../logs:/netpulse/logs
     environment:
       - NETPULSE_NETWORK_TCP_TIMEOUT=5.0
       - NETPULSE_NETWORK_UDP_TIMEOUT=3.0
-    command: ["pytest", "-v"]
+    command: ["pytest", "tests/functional", "tests/unit", "tests/integration", "-v"]
 
-  # Privileged runner with CAP_NET_RAW capability for raw socket operations
+  # 2. Regression & Baseline Verification Runner
+  netpulse-regression:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: netpulse-regression-runner
+    volumes:
+      - ../reports:/netpulse/reports
+      - ../logs:/netpulse/logs
+    command: ["python", "-m", "netpulse", "regression"]
+
+  # 3. Performance Benchmark & Report Generator
+  netpulse-performance:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: netpulse-performance-runner
+    volumes:
+      - ../reports:/netpulse/reports
+      - ../logs:/netpulse/logs
+    command: ["python", "-m", "netpulse", "benchmark", "--profile", "standard", "--html"]
+
+  # 4. Privileged Raw Packet & Live Sniffing Runner (CAP_NET_RAW / CAP_NET_ADMIN)
   netpulse-raw-capable:
     build:
       context: ..
@@ -27,4 +49,4 @@ services:
     volumes:
       - ../reports:/netpulse/reports
       - ../logs:/netpulse/logs
-    command: ["pytest", "-v", "-m", "not slow"]
+    command: ["python", "-m", "netpulse", "capture", "--packets", "20"]

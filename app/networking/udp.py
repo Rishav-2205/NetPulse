@@ -9,17 +9,16 @@ import random
 import socket
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 from app.core.exceptions import (
     ConnectionError as NetPulseConnectionError,
     TimeoutError as NetPulseTimeoutError,
-    SocketError,
     PacketValidationError,
     ServerLifecycleError,
 )
 from app.core.logging import get_logger
-from app.networking.connection import Endpoint, SocketOptions
+from app.networking.connection import SocketOptions
 from app.networking.sockets import create_udp_socket, safe_close
 
 logger = get_logger("udp")

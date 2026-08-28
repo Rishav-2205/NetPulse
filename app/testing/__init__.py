@@ -20,6 +20,15 @@ from app.testing.fixtures import (
     payload_factory,
     standard_topology,
 )
+from app.testing.metadata import (
+    TestCaseMetadata,
+    TestCatalog,
+    TestCategory,
+    ProtocolType,
+    OSI_Layer,
+    TestPriority,
+    test_case,
+)
 
 __all__ = [
     "BaseNetworkTest",
@@ -36,4 +45,11 @@ __all__ = [
     "http_session",
     "payload_factory",
     "standard_topology",
+    "TestCaseMetadata",
+    "TestCatalog",
+    "TestCategory",
+    "ProtocolType",
+    "OSI_Layer",
+    "TestPriority",
+    "test_case",
 ]

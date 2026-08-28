@@ -4,7 +4,7 @@ NetPulse Custom Domain Assertions.
 Provides expressive, informative network assertion helpers with detailed diagnostic failure messages.
 """
 
-from typing import Any, Dict, Optional, Sequence
+from typing import Dict, Optional
 
 from app.core.exceptions import PacketValidationError
 from app.networking.connection import ConnectionState

@@ -25,6 +25,15 @@ testing:
   junit_file: "reports/junit.xml"
   html_report_file: "reports/report.html"
 
+performance:
+  duration: 2.0
+  packet_count: 1000
+  packet_sizes: [64, 1024, 8192]
+  concurrency: 1
+  throughput_drop_threshold_pct: 15.0
+  latency_increase_threshold_pct: 20.0
+  packet_loss_threshold_pct: 1.0
+
 logging:
   level: "INFO"
   file: "logs/netpulse.log"

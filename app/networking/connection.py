@@ -4,7 +4,7 @@ NetPulse Connection Abstraction.
 Represents endpoints, connection states, and socket options.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Tuple
 

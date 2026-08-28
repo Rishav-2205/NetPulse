@@ -8,12 +8,11 @@ along with a lightweight, multi-threaded local TCPServer for reproducible offlin
 import socket
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from app.core.exceptions import (
     ConnectionError as NetPulseConnectionError,
     TimeoutError as NetPulseTimeoutError,
-    SocketError,
     ServerLifecycleError,
 )
 from app.core.logging import get_logger

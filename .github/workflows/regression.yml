@@ -1,0 +1,47 @@
+name: NetPulse Main Regression & Performance Pipeline
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  full-regression-and-benchmarks:
+    name: Full Regression & Performance Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies & package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Run Complete Test Suite
+        run: |
+          pytest -v --junitxml=reports/junit-full-suite.xml
+
+      - name: Run Performance Benchmarks & Compare Baseline
+        run: |
+          python -m netpulse benchmark --profile quick --compare-baseline --html
+
+      - name: Generate Demonstration & Executive Reports
+        run: |
+          python scripts/demo.py
+
+      - name: Upload Executive Dashboards & Regression Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: netpulse-executive-dashboards
+          path: |
+            reports/
+            logs/

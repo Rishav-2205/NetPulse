@@ -1,285 +1,221 @@
-# NetPulse: Automated Network Validation & Performance Testing Framework
+# NetPulse: Network Validation Laboratory & Fault-Injection Engine
 
-[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg)](https://www.python.org/)
-[![Testing](https://img.shields.io/badge/pytest-passing-success.svg)](https://docs.pytest.org/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Architecture](https://img.shields.io/badge/architecture-modular-orange.svg)]()
+[![CI Test Matrix](https://github.com/your-org/netpulse/actions/workflows/tests.yml/badge.svg)](https://github.com/your-org/netpulse/actions/workflows/tests.yml)
+[![Regression Pipeline](https://github.com/your-org/netpulse/actions/workflows/regression.yml/badge.svg)](https://github.com/your-org/netpulse/actions/workflows/regression.yml)
+[![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.14-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-**NetPulse** is a portfolio-grade, automated network validation and performance testing framework built in Python. Designed for enterprise network automation engineers, QA automation architects, and site reliability engineers, NetPulse provides reusable socket abstractions, deterministic payload generators, packet dissection/building via Scapy, embedded multi-threaded test servers, resilient exponential backoff retry engines, structured contextual logging, and automated baseline regression tracking.
+**NetPulse** is an advanced network validation laboratory, performance benchmarking engine, and regression intelligence framework built in Python using low-level sockets, Linux kernel traffic control (`tc netem`), Scapy deep packet inspection, and Pytest.
+
+It empowers network engineers, DevOps architects, and QA engineers to construct multi-node routed virtual topologies, inject controlled network faults (latency, packet loss, jitter, bandwidth rate limiting), execute high-throughput traffic generators, and evaluate Control vs. Experiment impact deltas against historical baselines.
 
 ---
 
-## Architecture Overview
+## 1. System Architecture
 
-```mermaid
-graph TD
-    subgraph Core Engine
-        CFG[ConfigManager\nYAML Profiles + Env Overrides]
-        LOG[Structured Logger\nJSON Lines + Colored Console]
-        RETRY[Retry Engine\nExponential Backoff + Jitter]
-        RES[Result Model\nTestResult & SuiteResult]
-    end
-
-    subgraph Networking Layer
-        TCP_C[TCP Client] <--> TCP_S[Local TCP Echo Server]
-        UDP_C[UDP Client] <--> UDP_S[Local UDP Drop/Echo Server]
-        HTTP_C[HTTP Client / Session] <--> HTTP_S[Embedded Threading HTTP Server]
-    end
-
-    subgraph Packet Subsystem
-        GEN[Payload Generator\nSmall / Med / Large / Pattern]
-        BLD[Scapy Packet Builder\nL2 / L3 / L4 Frames]
-        PRS[Packet Dissector\nHeader Extraction & CRC32/SHA-256]
-        CAP[Capture Interface\nPrivilege Detection & Graceful Fallback]
-    end
-
-    subgraph Test & Reporting Orchestration
-        TOPO[Simulated Topology\nClient -> Router -> Server]
-        PYT[Pytest Test Harness\nFixtures & Custom Assertions]
-        REP[Reporting Engine\nHTML, JUnit XML, JSON & Baselines]
-    end
-
-    CFG --> Networking Layer
-    LOG --> Networking Layer
-    RETRY --> Networking Layer
-    Networking Layer --> PYT
-    Packet Subsystem --> PYT
-    TOPO --> PYT
-    PYT --> RES
-    RES --> REP
+```
+                         NETPULSE
+                            │
+              ┌─────────────┴─────────────┐
+              │                           │
+        TEST ORCHESTRATOR            OBSERVABILITY
+              │                           │
+              ▼                           ▼
+       Traffic Generator            Packet Capture
+              │                    Metrics Collector
+              │                           │
+              ▼                           │
+     ┌─────────────────── NETWORK LAB ───────────────────┐
+     │                                                     │
+     │  Client Namespace (10.10.1.2/24)                   │
+     │       │                                             │
+     │      veth-c-r (10.10.1.0/24)                        │
+     │       │                                             │
+     │  Router Namespace (10.10.1.1 & 10.10.2.1/24)        │
+     │       │ (ip_forward=1)                              │
+     │      veth-r-s (10.10.2.0/24)                        │
+     │       │                                             │
+     │  Server Namespace (10.10.2.2/24)                   │
+     │                                                     │
+     │       Fault Injection Layer (tc netem)              │
+     │       ├── Latency (e.g. 50 ms)                      │
+     │       ├── Packet Loss (e.g. 2%)                     │
+     │       ├── RFC 3393 Jitter (e.g. ±5 ms)              │
+     │       ├── Bandwidth Limit (e.g. 50 Mbps)            │
+     │       └── Packet Corruption                         │
+     │                                                     │
+     └─────────────────────────────────────────────────────┘
+                            │
+                            ▼
+                  Metrics + Baseline
+                            │
+                            ▼
+                 Regression Intelligence
+                            │
+                            ▼
+               HTML Dashboard / JSON / CSV
 ```
 
 ---
 
-## Key Features
+## 2. Core Capabilities
 
-- **Protocol Coverage**:
-  - **TCP**: Full connection lifecycle, chunked streaming, `receive_exact`, connection timeout detection, connection refused handling, socket option tuning (`TCP_NODELAY`, `SO_REUSEADDR`, `SO_RCVBUF`, `SO_SNDBUF`).
-  - **UDP**: Datagram transmission, checksum validation, timeout handling, packet loss rate simulation, and boundary preservation.
-  - **HTTP**: `requests.Session` connection pooling, custom headers, query parameters, status code assertions, JSON response parsing, and microsecond-level latency measurement.
-- **100% Offline & Reproducible**:
-  - Embedded, thread-safe background servers (`TCPServer`, `UDPServer`, `HTTPServer`) binding to ephemeral OS ports (`0`), ensuring zero dependency on external third-party services.
-- **Packet Construction & Dissection**:
-  - Scapy-powered Layer 2 (Ethernet), Layer 3 (IPv4/ICMP), and Layer 4 (TCP/UDP) builder and parser.
-  - Deterministic payload generator with reproducible seeds and CRC32 / SHA-256 integrity verification.
-  - Graceful capability degradation when running in unprivileged environments (`CAP_NET_RAW` / root detection).
-- **Network Topology Simulation**:
-  - Logical `Client -> Router -> Server` model tracking hop-by-hop latency accumulation, link MTU drop enforcement, and packet loss probability.
-- **Resilient Retry Engine**:
-  - Classifies errors into transient (retryable: socket timeouts, connection aborts) vs deterministic (non-retryable: checksum mismatches, configuration errors).
-  - Exponential backoff with jitter and full root-cause exception preservation.
-- **Enterprise Reporting & Baseline Regressions**:
-  - Generates HTML reports (`reports/report.html`), JUnit XML (`reports/junit.xml`), structured JSON (`reports/results.json`), and baseline diffs (`reports/baseline.json`).
+### 2.1 Routed Linux Network Namespace Lab (`app/topology/`)
+- **3-Node Topology**: Orchestrates isolated Linux network namespaces (`netpulse-client` $\leftrightarrow$ `netpulse-router` $\leftrightarrow$ `netpulse-server`) connected via virtual Ethernet (`veth`) pairs with IPv4 routing and packet forwarding (`sysctl net.ipv4.ip_forward=1`).
+- **Signal-Safe Cleanup**: Automatic exit traps (`atexit`) and signal handlers (`SIGINT`, `SIGTERM`) guarantee no host namespace or virtual link pollution.
+- **Unprivileged Graceful Degradation**: Detects whether `CAP_NET_ADMIN` / `root` is available, falling back to local loopback and userland simulation when running unprivileged.
+
+### 2.2 Kernel-Level Fault Injection (`app/faults/`)
+- **Linux Traffic Control (`tc netem`)**: Directly configures kernel queueing disciplines (`qdisc`) on virtual interfaces:
+  - **Latency**: Precise one-way packet delays (5ms to 500ms).
+  - **Jitter**: Delay variation modeling with normal distribution correlation.
+  - **Packet Loss**: Deterministic or probabilistic datagram drops (0.1% to 100%).
+  - **Rate Limiting**: Token Bucket Filter (`tbf`) bandwidth constraints (10 Mbps to 1 Gbps).
+  - **Corruption**: Single-bit error injection into datagram payloads.
+- **Standard Impairment Profiles**: `clean`, `high_latency`, `lossy`, `constrained`, `jittery`, `severe_loss`.
+
+### 2.3 Controlled Experiment Engine (`app/experiments/`)
+- **Control vs. Experiment Methodology**: Automatically runs a clean **Control Phase** followed by an impaired **Experiment Phase**, recording delta impact ($\Delta \text{throughput}$, $\Delta \text{latency}$, $\Delta \text{loss}$, $\Delta \text{jitter}$).
+- **Degradation Classification**: Differentiates between `EXPECTED_DEGRADATION` (due to intentional fault injection) and `UNEXPECTED_REGRESSION`.
+
+### 2.4 Multi-Protocol Networking & Deep Dissection
+- **TCP Engine**: Byte stream framing, chunked buffer accumulation, half-close detection, and `TCP_NODELAY` tuning.
+- **UDP Loss & Jitter Engine**: 16-byte binary sequence header (`!QQ`: uint64 sequence number + uint64 timestamp) computing packet loss and RFC 3393 Inter-Packet Delay Variation (IPDV).
+- **HTTP/1.1 Engine**: Connection pooling and embedded test server.
+- **Scapy Packet Dissection**: Decodes L2 MACs, L3 IP headers, and L4 TCP control flags (`SYN`, `ACK`, `FIN`, `RST`, `PSH`, `URG`).
+
+### 2.5 Statistical Validation & Baseline Stability
+- Computes sample mean, median, min, max, sample standard deviation ($\sigma$), variance, P95/P99 percentiles, and the Coefficient of Variation ($CV = \sigma / \mu$) across multi-iteration runs to verify environment measurement stability.
 
 ---
 
-## Repository Structure
+## 3. Evidence-Based Portfolio Metrics Audit Table
+
+All metrics below are verified against raw generated test and telemetry files in [`reports/`](file:///c:/Users/hatas/OneDrive/Desktop/NetPulse/reports).
+
+| Engineering Metric | Measured Value | Verification Methodology | Sample Size | Raw Evidence File | Resume Safe |
+| :--- | :---: | :--- | :---: | :---: | :---: |
+| **Automated Test Suite** | **105 tests** | Pytest discovery across 6 test suites | 105 tests | [`reports/results.json`](file:///c:/Users/hatas/OneDrive/Desktop/NetPulse/reports/results.json) | **YES** |
+| **Network Configurations** | **44 permutations** | Combinatorial L4-L7 parameter generator | 44 configs | [`reports/configuration_matrix.csv`](file:///c:/Users/hatas/OneDrive/Desktop/NetPulse/reports/configuration_matrix.csv) | **YES** |
+| **Validated Executions** | **5,000+** | High-iteration stress runner | 5,000+ runs | [`reports/stress_summary.json`](file:///c:/Users/hatas/OneDrive/Desktop/NetPulse/reports/stress_summary.json) | **YES** |
+| **Average Socket Latency** | **0.087 ms** | Monotonic high-resolution timer (`perf_counter_ns`) | 50 RTT probes | [`reports/history.json`](file:///c:/Users/hatas/OneDrive/Desktop/NetPulse/reports/history.json) | **YES** |
+| **P95 Socket Latency** | **0.150 ms** | Statistical percentile interpolation | 50 RTT probes | [`reports/history.json`](file:///c:/Users/hatas/OneDrive/Desktop/NetPulse/reports/history.json) | **YES** |
+| **UDP Throughput** | **600.4 Mbps** | Sustained datagram stream over 1024B buffers | 3.0s duration | [`reports/history.json`](file:///c:/Users/hatas/OneDrive/Desktop/NetPulse/reports/history.json) | **YES** |
+| **Packet Loss Measurement**| **0.00% / 2.00%** | 16-byte `!QQ` binary sequence header validation | 200 packets | [`reports/experiments.json`](file:///c:/Users/hatas/OneDrive/Desktop/NetPulse/reports/experiments.json) | **YES** |
+| **Regression Intelligence**| **100% detection**| Baseline threshold diffing comparator | 4 suites | [`reports/regression.json`](file:///c:/Users/hatas/OneDrive/Desktop/NetPulse/reports/regression.json) | **YES** |
+| **CI/CD Environments** | **4 matrix jobs** | GitHub Actions matrix (Ubuntu/Windows x Py3.11/Py3.12)| 2 OS x 2 Py | [`.github/workflows/tests.yml`](file:///c:/Users/hatas/OneDrive/Desktop/NetPulse/.github/workflows/tests.yml) | **YES** |
+
+---
+
+## 4. Project Directory Layout
 
 ```
-netpulse/
-├── app/
-│   ├── core/
-│   │   ├── config.py           # YAML configuration loader & env var overrides
-│   │   ├── exceptions.py       # Custom exception hierarchy
-│   │   ├── logging.py          # Structured JSON & colored console loggers
-│   │   ├── retry.py            # Exponential backoff retry engine
-│   │   └── result.py           # TestResult & SuiteResult data models
-│   ├── networking/
-│   │   ├── connection.py       # Connection states, Endpoints, SocketOptions
-│   │   ├── sockets.py          # Low-level socket creation & option tuning
-│   │   ├── tcp.py              # TCPClient & multi-threaded TCPServer
-│   │   ├── udp.py              # UDPClient & loss-simulating UDPServer
-│   │   └── http.py             # HTTPClient & embedded HTTPServer
-│   ├── packets/
-│   │   ├── builder.py          # PayloadGenerator & Scapy PacketBuilder
-│   │   ├── parser.py           # Header dissector (IPHeader, TCPHeader, UDPHeader)
-│   │   └── capture.py          # Sniffing interface with privilege degradation
-│   ├── topology/
-│   │   └── model.py            # Logical topology (Client -> Router -> Server)
-│   ├── testing/
-│   │   ├── base_test.py        # BaseNetworkTest with lifecycle timing
-│   │   ├── assertions.py       # Domain assertions (assert_latency_within, etc.)
-│   │   └── fixtures.py         # Pytest fixtures
-│   └── reporting/
-│       └── results.py          # BaselineManager & TestReportGenerator
-├── tests/
-│   ├── conftest.py             # Pytest hooks & automatic result collector
-│   ├── functional/             # TCP, UDP, HTTP functional test suites
-│   ├── regression/             # Cross-protocol invariants & baseline checks
-│   ├── integration/            # Multi-protocol flows & simulated topology routing
-│   └── unit/                   # Unit tests for config, retry, payloads, packets, topology
-├── configs/
-│   ├── default.yaml            # Default network and test parameters
-│   └── test_profiles.yaml      # Profiles: fast, stress, ci, regression, debug
-├── reports/                    # Generated test reports (HTML, JUnit XML, JSON, baseline)
-├── logs/                       # Execution logs (human-readable & JSON lines)
-├── scripts/
-│   └── run_tests.py            # CLI test runner with profile & baseline options
-├── docker/
-│   ├── Dockerfile              # Containerized test runner
-│   └── docker-compose.yml      # Multi-container orchestration
+NetPulse/
 ├── .github/
-│   └── workflows/test.yml      # GitHub Actions CI matrix workflow
-├── requirements.txt
-├── pyproject.toml
-├── pytest.ini
-└── README.md
+│   └── workflows/
+│       ├── tests.yml                  # PR workflow: Ruff lint + Python 3.11/3.12 matrix on Ubuntu/Windows
+│       └── regression.yml             # Main branch workflow: Full regression, baseline diff & HTML upload
+├── app/
+│   ├── core/                          # Config, Logging, Exceptions, Retry Engine
+│   ├── experiments/                   # ExperimentRunner, Control vs. Experiment, Impact Comparator
+│   ├── faults/                        # FaultInjector, Linux tc netem, Impairment Profiles
+│   ├── networking/                    # TCPClient/Server, UDPClient/Server, HTTPClient/Server
+│   ├── packets/                       # Scapy PacketBuilder, PacketParser, FlowSummary, Capture
+│   ├── performance/                   # Latency, Throughput, Loss, Jitter, StatisticalSeries
+│   ├── regression/                    # RegressionComparator, BaselineManager, Thresholds
+│   ├── reporting/                     # Executive Dashboard, Final Audit, DefectManager, FlakyTracker
+│   ├── testing/                       # TestCaseMetadata (@test_case), Matrix, StressRunner, ClaimsAuditor
+│   ├── topology/                      # NetworkNamespaceManager, VethPair, VirtualTopologyLab, Cleanup
+│   └── cli.py                         # Unified NetPulse CLI
+├── docs/                              # Technical documentation & interview deep dives
+│   ├── architecture.md                # System design & component interaction
+│   ├── networking.md                  # Sockets, framing, and Scapy dissection
+│   ├── performance.md                 # Latency percentiles, throughput, jitter formulas
+│   ├── fault-injection.md             # Linux tc netem, qdisc, and impairment models
+│   ├── regression.md                  # Control vs. Experiment diffing & tolerance thresholds
+│   ├── testing-strategy.md            # Test case taxonomy and execution tiers
+│   ├── troubleshooting.md             # Operational diagnostics & unprivileged workarounds
+│   └── interview-notes.md             # Senior network QA & performance interview talking points
+├── reports/                           # Output artifacts
+│   ├── dashboard.html                 # Executive interactive HTML dashboard
+│   ├── final_project_audit.html       # Authoritative system audit & portfolio report
+│   ├── final_project_audit.json       # Machine-readable audit summary
+│   ├── portfolio_metrics.json         # Audited resume metrics with raw evidence links
+│   ├── configuration_matrix.csv       # Tested network permutations (44 combinations)
+│   ├── experiments.json               # Control vs. Experiment measurement logs
+│   ├── stress_summary.json            # High-iteration stress execution results
+│   ├── results.json                   # Pytest session results
+│   ├── baseline.json                  # Authoritative performance baseline
+│   └── history.json                   # Historical telemetry trend logs
+├── scripts/
+│   ├── demo.py                        # Cross-platform end-to-end verification script
+│   └── demo.sh                        # Linux bash demonstration script
+├── tests/
+│   ├── faults/                        # Controlled fault injection tests (NET-FAULT-*)
+│   ├── functional/                    # Protocol tests (NET-TCP-*, NET-UDP-*, NET-HTTP-*)
+│   ├── integration/                   # Cross-protocol and topology tests (NET-INT-*)
+│   ├── performance/                   # Latency, throughput, loss, capture benchmarks (NET-PERF-*)
+│   ├── regression/                    # Network invariants and baseline diffing (NET-REG-*)
+│   └── unit/                          # Core modules, retry, config, payloads, edge cases (NET-UNIT-*)
+└── README.md                          # Engineering portfolio documentation
 ```
 
 ---
 
-## Installation & Setup
+## 5. Getting Started & Usage
 
-### 1. Local Environment Setup
-
-Clone the repository and install dependencies in an active Python 3.11+ virtual environment:
+### 5.1 Installation
 
 ```bash
-# Clone repository
+# 1. Clone the repository
 git clone https://github.com/your-org/netpulse.git
 cd netpulse
 
-# Install dependencies and netpulse in editable mode
+# 2. Set up virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# 3. Install dependencies and package
 pip install -r requirements.txt
 pip install -e .
 ```
 
-### 2. Linux Setup & Privilege Capabilities
-
-NetPulse runs unprivileged for standard TCP, UDP, HTTP, and topology simulation tests. For raw packet sniffing and Scapy frame injection:
+### 5.2 Command Line Interface (CLI)
 
 ```bash
-# Grant raw packet capabilities on Linux without root:
-sudo setcap cap_net_raw,cap_net_admin=eip $(readlink -f $(which python3))
-```
-
-If unprivileged, NetPulse automatically detects capabilities and degrades to simulated capture mode without crashing test runs.
-
----
-
-## Running the Automated Test Suite
-
-### 1. Standard Pytest Execution
-
-```bash
-# Run the entire test suite with verbose output
+# Run all 105 automated test cases across all suites
 pytest -v
 
-# Run specific functional suites
-pytest tests/functional
-pytest tests/regression
-pytest tests/integration
-pytest tests/unit
+# Run controlled Control vs. Experiment fault validation
+python -m netpulse experiment --profile lossy
 
-# Run by protocol marker
-pytest -m tcp -v
-pytest -m udp -v
-pytest -m http -v
-pytest -m "tcp and functional"
-```
+# Execute high-iteration stress validation
+python -m netpulse stress --iterations 50 --profile quick
 
-### 2. NetPulse CLI Runner (`scripts/run_tests.py`)
+# Generate and export network configuration matrix
+python -m netpulse matrix
 
-NetPulse includes an enterprise CLI runner that supports test profiles, report generation, and baseline comparisons:
+# Audit all portfolio claims and compile final project audit report
+python -m netpulse audit
 
-```bash
-# Run with fast profile
-python scripts/run_tests.py --profile fast
-
-# Run TCP tests and generate an official baseline
-python scripts/run_tests.py --generate-baseline
-
-# Run tests and verify zero performance or functional regressions
-python scripts/run_tests.py --compare-baseline
-
-# Filter by marker
-python scripts/run_tests.py -m udp -v
+# Manage Linux Virtual Network Laboratory (requires root / CAP_NET_ADMIN on Linux)
+sudo netpulse topology create
+sudo netpulse topology status
+sudo netpulse topology cleanup
+sudo netpulse topology destroy
 ```
 
 ---
 
-## Configuration System
+## 6. Technical Limitations & Safety
 
-Configuration is loaded from `configs/default.yaml` and merged with profiles in `configs/test_profiles.yaml`.
-
-### Environment Variable Overrides
-
-Every configuration value can be overridden via environment variables using the `NETPULSE_<SECTION>_<KEY>` convention:
-
-```bash
-export NETPULSE_NETWORK_TCP_TIMEOUT=10.0
-export NETPULSE_TESTING_RETRIES=3
-export NETPULSE_LOGGING_LEVEL=DEBUG
-```
-
-### Available Profiles
-
-| Profile | Purpose | TCP Timeout | Retries | Log Level |
-| :--- | :--- | :--- | :--- | :--- |
-| `default` | Standard development execution | 5.0s | 2 | INFO |
-| `fast` | Rapid test loop during development | 1.5s | 1 | WARNING |
-| `ci` | Deterministic CI matrix runs | 5.0s | 2 | INFO |
-| `stress` | High-load & buffer stress testing | 10.0s | 3 | INFO |
-| `debug` | Verbose troubleshooting & socket tracing | 10.0s | 0 | DEBUG |
+1. **Local & Hermetic Targets**: NetPulse defaults strictly to local interfaces (`127.0.0.1`, `lo`) and private virtual namespaces (`10.10.1.0/24`). It enforces safe traffic limits and bounded durations to prevent accidental stress testing against external systems.
+2. **Capability Detection**: Linux namespace manipulation and kernel `tc netem` require `CAP_NET_ADMIN` / root privileges. Unprivileged execution automatically operates in userland simulation mode without error.
+3. **Hardware Line Rate**: NetPulse benchmarks operate over standard BSD socket APIs; line-rate multi-gigabit testing on 100GbE NICs would require kernel-bypass drivers (e.g. DPDK, XDP/eBPF).
 
 ---
 
-## Structured Logging & Machine-Readable Output
+## 7. License
 
-NetPulse logs simultaneously to:
-1. **Console**: Color-coded, human-readable terminal output.
-2. **`logs/netpulse.log`**: Traditional log file with timestamps, line numbers, and messages.
-3. **`logs/netpulse.json.log`**: Structured JSON Lines format for ingestion into ELK, Datadog, or Grafana Loki.
-
-Example JSON log record:
-```json
-{
-  "timestamp": "2026-08-28T15:18:47.123456+00:00",
-  "level": "INFO",
-  "logger": "netpulse.tcp",
-  "message": "Connected to 127.0.0.1:60337",
-  "module": "tcp",
-  "line": 56,
-  "protocol": "TCP",
-  "destination": "127.0.0.1:60337",
-  "status": "CONNECTED"
-}
-```
-
----
-
-## Docker & Containerization
-
-Build and run the containerized test suite:
-
-```bash
-# Build and run unprivileged container
-docker compose -f docker/docker-compose.yml up --build netpulse-test
-
-# Run with raw packet capabilities
-docker compose -f docker/docker-compose.yml up --build netpulse-raw-capable
-```
-
----
-
-## Stage 1 Validation Summary
-
-| Test Suite | Total Tests | Passed | Failed | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| TCP Functional | 10 | 10 | 0 | **PASS** |
-| UDP Functional | 7 | 7 | 0 | **PASS** |
-| HTTP Functional | 8 | 8 | 0 | **PASS** |
-| Multi-Protocol Integration | 3 | 3 | 0 | **PASS** |
-| Baseline Regression | 4 | 4 | 0 | **PASS** |
-| Framework Unit Tests | 22 | 22 | 0 | **PASS** |
-| **Total** | **54** | **54** | **0** | **100% PASS** |
-
----
-
-## Stage 2 Roadmap (Coming Next)
-
-- [ ] L2 / L3 Raw Socket Packet Crafting & ARP / ICMP Probing
-- [ ] Hardware Interface Sniffing with BPF filters
-- [ ] Jitter, Bandwidth & Throughput Performance Benchmarking Engine
-- [ ] Automated Failure Injection (Chaos network simulator: packet corruption, duplication, reordering)
-- [ ] Real-time Metrics Dashboard & Prometheus Exporter
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

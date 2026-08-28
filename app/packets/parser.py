@@ -8,7 +8,7 @@ for Layer 2, Layer 3, and Layer 4 header validation.
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
-from scapy.layers.inet import IP, TCP, UDP, ICMP
+from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.l2 import Ether
 from scapy.packet import Packet
 

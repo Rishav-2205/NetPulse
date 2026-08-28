@@ -30,6 +30,9 @@ dev = [
     "mypy>=1.5.0"
 ]
 
+[project.scripts]
+netpulse = "app.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
@@ -48,11 +51,28 @@ markers = [
     "regression: Regression test cases verifying baseline invariants",
     "integration: Multi-component end-to-end integration test cases",
     "performance: Network performance and latency benchmarks",
+    "packet_capture: Packet capture and live sniffing test cases",
     "unit: Unit tests for core framework modules",
     "requires_root: Tests requiring elevated / raw socket capabilities (CAP_NET_RAW)"
 ]
 addopts = "-ra --strict-markers -q"
 filterwarnings = [
     "ignore::DeprecationWarning",
-    "ignore::UserWarning"
+    "ignore::PendingDeprecationWarning"
 ]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "reports",
+    "logs",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]

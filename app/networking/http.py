@@ -10,7 +10,7 @@ import json
 from socketserver import ThreadingMixIn
 import threading
 import time
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional
 import urllib.parse
 
 import requests

@@ -7,24 +7,33 @@ and tests simulated packet routing across the logical topology abstraction (Clie
 
 import pytest
 
-from app.core.exceptions import PacketValidationError
 from app.networking.http import HTTPClient, HTTPServer
 from app.networking.tcp import TCPClient, TCPServer
 from app.networking.udp import UDPClient, UDPServer
 from app.packets.builder import PayloadGenerator
-from app.topology.model import NetworkTopology, Node, NodeType
+from app.topology.model import NetworkTopology
 from app.testing.assertions import (
     assert_payload_integrity,
     assert_status_code,
-    assert_latency_within,
 )
 from app.testing.base_test import BaseNetworkTest
+from app.testing.metadata import test_case, TestCategory, ProtocolType, OSI_Layer, TestPriority
 
 
 @pytest.mark.integration
 class TestNetworkIntegration(BaseNetworkTest):
     """Integration test suite for multi-component network workflows."""
 
+    @test_case(
+        test_id="NET-INT-001",
+        name="Multi-Protocol Concurrent Flow Execution",
+        category=TestCategory.INTEGRATION,
+        protocol=ProtocolType.FRAMEWORK,
+        layer=OSI_Layer.CROSS_LAYER,
+        priority=TestPriority.CRITICAL,
+        description="Verify seamless execution of TCP, UDP, and HTTP transactions concurrently against separate servers.",
+        expected_behavior="All three protocol operations succeed independently without cross-talk or resource contention."
+    )
     def test_multi_protocol_concurrent_services(
         self,
         tcp_server: TCPServer,
@@ -53,9 +62,18 @@ class TestNetworkIntegration(BaseNetworkTest):
             assert_status_code(http_resp.status_code, 200)
             assert http_resp.json()["status"] == "ok"
 
+    @test_case(
+        test_id="NET-INT-002",
+        name="Simulated Multi-Hop Topology Traversal",
+        category=TestCategory.INTEGRATION,
+        protocol=ProtocolType.TOPOLOGY,
+        layer=OSI_Layer.LAYER_3,
+        priority=TestPriority.HIGH,
+        description="Verify simulated packet routing and hop-by-hop latency accumulation across Client -> Router -> Server.",
+        expected_behavior="Transit succeeds through designated hops with correct accumulated latency and MTU."
+    )
     def test_simulated_topology_path_traversal(self, standard_topology: NetworkTopology) -> None:
         """Integration: Simulate end-to-end packet transmission through Client -> Router -> Server."""
-        # Packet fits inside standard MTU 1500
         result = standard_topology.simulate_transmission(
             src_name="client",
             dst_name="server",
@@ -65,11 +83,20 @@ class TestNetworkIntegration(BaseNetworkTest):
         assert result.success is True
         assert result.hops == ["client", "router", "server"]
         assert result.path_mtu == 1500
-        assert result.total_latency_ms == 3.0  # 1.0ms + 2.0ms
+        assert result.total_latency_ms == 3.0
 
+    @test_case(
+        test_id="NET-INT-003",
+        name="Simulated Topology Path MTU Drop",
+        category=TestCategory.INTEGRATION,
+        protocol=ProtocolType.TOPOLOGY,
+        layer=OSI_Layer.LAYER_3,
+        priority=TestPriority.HIGH,
+        description="Verify simulated oversized packet drop when exceeding bottleneck path MTU.",
+        expected_behavior="Transmission fails with explicit drop reason indicating link MTU exceeded."
+    )
     def test_simulated_topology_mtu_drop(self, standard_topology: NetworkTopology) -> None:
         """Integration: Simulate oversized packet drop when exceeding path MTU."""
-        # Packet is 1600 bytes, exceeding 1500 byte MTU
         result = standard_topology.simulate_transmission(
             src_name="client",
             dst_name="server",

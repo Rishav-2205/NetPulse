@@ -8,7 +8,7 @@ environment variable overrides, schema validation, and path resolution.
 from dataclasses import dataclass, field, asdict
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 import yaml
 
 from app.core.exceptions import ConfigurationError
@@ -65,12 +65,25 @@ class TopologyConfig:
 
 
 @dataclass
+class PerformanceConfig:
+    """Performance testing and benchmark parameters."""
+    duration: float = 2.0
+    packet_count: int = 1000
+    packet_sizes: List[int] = field(default_factory=lambda: [64, 1024, 8192])
+    concurrency: int = 1
+    throughput_drop_threshold_pct: float = 15.0
+    latency_increase_threshold_pct: float = 20.0
+    packet_loss_threshold_pct: float = 1.0
+
+
+@dataclass
 class AppConfig:
     """Root configuration object containing all component configs."""
     network: NetworkConfig = field(default_factory=NetworkConfig)
     testing: TestingConfig = field(default_factory=TestingConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     topology: TopologyConfig = field(default_factory=TopologyConfig)
+    performance: PerformanceConfig = field(default_factory=PerformanceConfig)
     profile_name: str = "default"
 
     def to_dict(self) -> Dict[str, Any]:
@@ -143,23 +156,27 @@ class ConfigManager:
         test_kwargs = config_data.get("testing", {})
         log_kwargs = config_data.get("logging", {})
         top_kwargs = config_data.get("topology", {})
+        perf_kwargs = config_data.get("performance", {})
 
         network_cfg = NetworkConfig(**{k: v for k, v in net_kwargs.items() if hasattr(NetworkConfig, k)})
         testing_cfg = TestingConfig(**{k: v for k, v in test_kwargs.items() if hasattr(TestingConfig, k)})
         logging_cfg = LoggingConfig(**{k: v for k, v in log_kwargs.items() if hasattr(LoggingConfig, k)})
         topology_cfg = TopologyConfig(**{k: v for k, v in top_kwargs.items() if hasattr(TopologyConfig, k)})
+        performance_cfg = PerformanceConfig(**{k: v for k, v in perf_kwargs.items() if hasattr(PerformanceConfig, k)})
 
         # 4. Apply environment variable overrides (e.g., NETPULSE_NETWORK_TCP_TIMEOUT=10)
         cls._apply_env_overrides(network_cfg, "NETWORK_", env_prefix)
         cls._apply_env_overrides(testing_cfg, "TESTING_", env_prefix)
         cls._apply_env_overrides(logging_cfg, "LOGGING_", env_prefix)
         cls._apply_env_overrides(topology_cfg, "TOPOLOGY_", env_prefix)
+        cls._apply_env_overrides(performance_cfg, "PERFORMANCE_", env_prefix)
 
         app_config = AppConfig(
             network=network_cfg,
             testing=testing_cfg,
             logging=logging_cfg,
             topology=topology_cfg,
+            performance=performance_cfg,
             profile_name=profile or "default"
         )
 

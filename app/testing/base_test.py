@@ -5,11 +5,9 @@ Provides structured lifecycle hooks, per-test logging adapters, and execution ti
 """
 
 import time
-from typing import Any, Dict, Optional
-import unittest
+from typing import Any
 
 from app.core.logging import get_logger, TestContextAdapter
-from app.core.result import TestResult, TestStatus
 
 
 class BaseNetworkTest:

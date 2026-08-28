@@ -5,23 +5,18 @@ Validates UDP datagram transmission, response verification, timeout handling,
 payload integrity, simulated packet drops, and invalid destination behavior.
 """
 
-import socket
 import time
 import pytest
 
 from app.core.exceptions import (
-    ConnectionError as NetPulseConnectionError,
     TimeoutError as NetPulseTimeoutError,
     PacketValidationError,
 )
 from app.networking.udp import UDPClient, UDPServer
 from app.packets.builder import PayloadGenerator
-from app.testing.assertions import (
-    assert_payload_integrity,
-    assert_packet_loss_rate,
-    assert_latency_within,
-)
+from app.testing.assertions import assert_payload_integrity
 from app.testing.base_test import BaseNetworkTest
+from app.testing.metadata import test_case, TestCategory, ProtocolType, OSI_Layer, TestPriority
 
 
 @pytest.mark.udp
@@ -29,6 +24,16 @@ from app.testing.base_test import BaseNetworkTest
 class TestUDPFunctional(BaseNetworkTest):
     """Test suite covering UDP datagram network operations."""
 
+    @test_case(
+        test_id="NET-UDP-001",
+        name="UDP Unicast Datagram Transmission",
+        category=TestCategory.FUNCTIONAL,
+        protocol=ProtocolType.UDP,
+        layer=OSI_Layer.LAYER_4,
+        priority=TestPriority.CRITICAL,
+        description="Verify sending a single datagram and receiving the echo response.",
+        expected_behavior="Datagram is delivered without corruption and sender endpoint is verified."
+    )
     def test_udp_successful_transmission(self, udp_server: UDPServer) -> None:
         """Test sending a single UDP datagram and verifying server reception."""
         payload = b"NetPulse UDP Single Datagram Test"
@@ -41,6 +46,16 @@ class TestUDPFunctional(BaseNetworkTest):
             assert data == payload
             assert sender[0] == "127.0.0.1"
 
+    @test_case(
+        test_id="NET-UDP-002",
+        name="UDP Strict Echo Validation",
+        category=TestCategory.FUNCTIONAL,
+        protocol=ProtocolType.UDP,
+        layer=OSI_Layer.LAYER_4,
+        priority=TestPriority.HIGH,
+        description="Verify send_and_receive with strict echo comparison enabled.",
+        expected_behavior="Echo payload strictly matches original datagram."
+    )
     def test_udp_response_validation_match(self, udp_server: UDPServer) -> None:
         """Test send_and_receive with strict echo validation enabled."""
         payload = b"Strict Validation Datagram Content"
@@ -55,9 +70,18 @@ class TestUDPFunctional(BaseNetworkTest):
             )
             assert response == payload
 
+    @test_case(
+        test_id="NET-UDP-003",
+        name="UDP Corrupted Response Detection",
+        category=TestCategory.FUNCTIONAL,
+        protocol=ProtocolType.UDP,
+        layer=OSI_Layer.LAYER_4,
+        priority=TestPriority.HIGH,
+        description="Verify detection of mutated/corrupted datagram payload.",
+        expected_behavior="PacketValidationError raised when echoed bytes differ."
+    )
     def test_udp_response_validation_mismatch(self) -> None:
         """Test that send_and_receive raises PacketValidationError on corrupted response."""
-        # Server that mutates payload
         def corrupting_handler(data: bytes, sender: tuple) -> bytes:
             return b"CORRUPTED_RESPONSE"
 
@@ -77,6 +101,16 @@ class TestUDPFunctional(BaseNetworkTest):
         finally:
             server.stop()
 
+    @test_case(
+        test_id="NET-UDP-004",
+        name="UDP Receive Datagram Timeout",
+        category=TestCategory.FUNCTIONAL,
+        protocol=ProtocolType.UDP,
+        layer=OSI_Layer.LAYER_4,
+        priority=TestPriority.MEDIUM,
+        description="Verify timeout raised when no UDP datagram is received.",
+        expected_behavior="TimeoutError raised promptly within timeout window."
+    )
     def test_udp_receive_timeout(self) -> None:
         """Test that receive_datagram raises TimeoutError when no datagram arrives."""
         with UDPClient() as client:
@@ -88,6 +122,16 @@ class TestUDPFunctional(BaseNetworkTest):
             assert elapsed < 2.0
             assert "timed out" in str(exc_info.value)
 
+    @test_case(
+        test_id="NET-UDP-005",
+        name="UDP Sequenced Multi-Datagram Burst",
+        category=TestCategory.FUNCTIONAL,
+        protocol=ProtocolType.UDP,
+        layer=OSI_Layer.LAYER_4,
+        priority=TestPriority.HIGH,
+        description="Verify sending 15 sequential datagrams and validating arrival order.",
+        expected_behavior="All 15 datagrams are received and echoed in exact sequence."
+    )
     def test_udp_multiple_datagrams(self, udp_server: UDPServer, payload_factory: type[PayloadGenerator]) -> None:
         """Test sending multiple datagrams with sequence numbers and verifying order/content."""
         packet_count = 15
@@ -103,6 +147,16 @@ class TestUDPFunctional(BaseNetworkTest):
 
         assert udp_server.received_packets_count == packet_count
 
+    @test_case(
+        test_id="NET-UDP-006",
+        name="UDP Binary Payload CRC32 Integrity",
+        category=TestCategory.FUNCTIONAL,
+        protocol=ProtocolType.UDP,
+        layer=OSI_Layer.LAYER_4,
+        priority=TestPriority.CRITICAL,
+        description="Verify binary payload integrity via CRC32 checksum over UDP datagrams.",
+        expected_behavior="CRC32 checksum of received payload matches sent checksum."
+    )
     def test_udp_payload_integrity(self, udp_server: UDPServer, payload_factory: type[PayloadGenerator]) -> None:
         """Test transmitting binary payloads and verifying CRC32 / SHA-256 integrity."""
         payload = payload_factory.generate_medium(seed=555)
@@ -115,9 +169,18 @@ class TestUDPFunctional(BaseNetworkTest):
             checksum_actual = payload_factory.calculate_checksum(response, algorithm="crc32")
             assert checksum_actual == checksum_expected
 
+    @test_case(
+        test_id="NET-UDP-007",
+        name="UDP Loss Simulation & Drop Tracking",
+        category=TestCategory.FUNCTIONAL,
+        protocol=ProtocolType.UDP,
+        layer=OSI_Layer.LAYER_4,
+        priority=TestPriority.HIGH,
+        description="Verify simulated 40% packet drop server tracks dropped vs received count.",
+        expected_behavior="Server records exact received and dropped packet statistics."
+    )
     def test_udp_simulated_packet_loss(self) -> None:
         """Test server with simulated 40% packet drop rate and verify drop statistics."""
-        # 40% simulated drop rate
         server = UDPServer(host="127.0.0.1", port=0, packet_drop_rate=0.4)
         server.start()
 
@@ -132,10 +195,8 @@ class TestUDPFunctional(BaseNetworkTest):
                         data, _ = client.receive_datagram(timeout=0.1)
                         received += 1
                     except NetPulseTimeoutError:
-                        # Dropped packet
                         pass
 
-            # Verify server saw packets and dropped some
             assert server.received_packets_count == total_sent
             assert server.dropped_packets_count > 0
             assert received < total_sent

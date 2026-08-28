@@ -8,7 +8,7 @@ with checksum calculations and builds Scapy L2/L3/L4 network packets.
 import hashlib
 import os
 import random
-from typing import Any, Dict, Optional
+from typing import Optional
 import zlib
 
 from scapy.layers.inet import IP, TCP, UDP, ICMP
@@ -139,6 +139,43 @@ class PacketBuilder:
         ip_layer = IP(src=src_ip, dst=dst_ip)
         udp_layer = UDP(sport=sport, dport=dport)
         return ip_layer / udp_layer / payload
+
+    @staticmethod
+    def build_ether_ip_tcp(
+        src_mac: str = "00:11:22:33:44:55",
+        dst_mac: str = "ff:ff:ff:ff:ff:ff",
+        src_ip: str = "127.0.0.1",
+        dst_ip: str = "127.0.0.1",
+        sport: int = 12345,
+        dport: int = 80,
+        flags: str = "S",
+        seq: int = 100,
+        ack: int = 0,
+        payload: bytes = b""
+    ) -> Packet:
+        """Construct a complete Ethernet/IP/TCP Layer 2/3/4 packet."""
+        eth = Ether(src=src_mac, dst=dst_mac)
+        ip = IP(src=src_ip, dst=dst_ip)
+        tcp = TCP(sport=sport, dport=dport, flags=flags, seq=seq, ack=ack)
+        if payload:
+            return eth / ip / tcp / payload
+        return eth / ip / tcp
+
+    @staticmethod
+    def build_ether_ip_udp(
+        src_mac: str = "00:11:22:33:44:55",
+        dst_mac: str = "ff:ff:ff:ff:ff:ff",
+        src_ip: str = "127.0.0.1",
+        dst_ip: str = "127.0.0.1",
+        sport: int = 12345,
+        dport: int = 5001,
+        payload: bytes = b"NetPulse Datagram"
+    ) -> Packet:
+        """Construct a complete Ethernet/IP/UDP Layer 2/3/4 packet."""
+        eth = Ether(src=src_mac, dst=dst_mac)
+        ip = IP(src=src_ip, dst=dst_ip)
+        udp = UDP(sport=sport, dport=dport)
+        return eth / ip / udp / payload
 
     @staticmethod
     def build_icmp_echo(

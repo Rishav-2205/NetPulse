@@ -79,11 +79,19 @@ class SuiteResult:
     suite_name: str = "NetPulse Test Suite"
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     results: List[TestResult] = field(default_factory=list)
+    performance_benchmarks: List[Dict[str, Any]] = field(default_factory=list)
     environment_info: Dict[str, Any] = field(default_factory=dict)
 
     def add_result(self, result: TestResult) -> None:
         """Append a test result to the suite."""
         self.results.append(result)
+
+    def add_performance_benchmark(self, benchmark: Any) -> None:
+        """Append a performance result dictionary or PerformanceResult model."""
+        if hasattr(benchmark, "to_dict"):
+            self.performance_benchmarks.append(benchmark.to_dict())
+        elif isinstance(benchmark, dict):
+            self.performance_benchmarks.append(benchmark)
 
     @property
     def total_tests(self) -> int:
@@ -121,6 +129,7 @@ class SuiteResult:
             "suite_name": self.suite_name,
             "timestamp": self.timestamp,
             "total_tests": self.total_tests,
+            "total_benchmarks": len(self.performance_benchmarks),
             "passed": self.passed_count,
             "failed": self.failed_count,
             "errors": self.error_count,
@@ -134,7 +143,8 @@ class SuiteResult:
         return {
             "summary": self.get_summary(),
             "environment": self.environment_info,
-            "tests": [r.to_dict() for r in self.results]
+            "tests": [r.to_dict() for r in self.results],
+            "benchmarks": self.performance_benchmarks
         }
 
     def to_json(self, indent: int = 2) -> str:
@@ -143,7 +153,6 @@ class SuiteResult:
 
     def save_to_file(self, filepath: str) -> None:
         """Write suite result JSON to file."""
-        import os
         from pathlib import Path
         path = Path(filepath)
         path.parent.mkdir(parents=True, exist_ok=True)

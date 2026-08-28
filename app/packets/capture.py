@@ -8,13 +8,10 @@ live sniffing when available or simulated capture fallbacks.
 import os
 import platform
 import socket
-import sys
-import threading
-from typing import Callable, List, Optional
+from typing import List, Optional
 
 from scapy.packet import Packet
 
-from app.core.exceptions import TestExecutionError
 from app.core.logging import get_logger
 
 logger = get_logger("packets.capture")
@@ -54,15 +51,28 @@ def has_raw_socket_capability() -> bool:
 class PacketCaptureSession:
     """
     Captures network packets live (if privileged) or accumulates packets via a simulated sink.
+    Supports BPF filtering, interface selection, packet limits, and protocol identification.
     """
 
-    def __init__(self, filter_bpf: Optional[str] = None, iface: Optional[str] = None):
+    def __init__(
+        self,
+        filter_bpf: Optional[str] = None,
+        iface: Optional[str] = None,
+        packet_limit: Optional[int] = None,
+        timeout: Optional[float] = None
+    ):
         self.filter_bpf = filter_bpf
         self.iface = iface
+        self.packet_limit = packet_limit
+        self.timeout = timeout
         self.captured_packets: List[Packet] = []
         self.is_privileged = has_raw_socket_capability()
         self._is_capturing = False
         self._sniffer = None
+
+    @property
+    def captured_count(self) -> int:
+        return len(self.captured_packets)
 
     def start(self) -> "PacketCaptureSession":
         """Start capturing packets."""
@@ -77,10 +87,12 @@ class PacketCaptureSession:
                 filter=self.filter_bpf,
                 iface=self.iface,
                 prn=self._on_packet,
+                count=self.packet_limit or 0,
+                timeout=self.timeout,
                 store=True
             )
             self._sniffer.start()
-            logger.info("Live packet capture started")
+            logger.info("Live packet capture started", extra={"filter": self.filter_bpf, "iface": self.iface})
         except Exception as e:
             logger.warning(f"Could not initialize live sniffer ({e}). Falling back to simulated mode.")
             self._sniffer = None
@@ -89,10 +101,21 @@ class PacketCaptureSession:
 
     def _on_packet(self, pkt: Packet) -> None:
         self.captured_packets.append(pkt)
+        if self.packet_limit and len(self.captured_packets) >= self.packet_limit:
+            self._is_capturing = False
 
     def record_simulated_packet(self, pkt: Packet) -> None:
         """Inject a packet into the capture session for simulated test environments."""
         self.captured_packets.append(pkt)
+
+    def get_protocol_distribution(self) -> dict[str, int]:
+        """Return counts of identified protocols in captured packets."""
+        counts: dict[str, int] = {}
+        for pkt in self.captured_packets:
+            for layer in pkt.layers():
+                name = layer.__name__
+                counts[name] = counts.get(name, 0) + 1
+        return counts
 
     def stop(self) -> List[Packet]:
         """Stop capturing and return all captured packets."""

@@ -12,7 +12,6 @@ import time
 from typing import Any, Callable, Optional, Sequence, Tuple, Type, TypeVar, Union
 
 from app.core.exceptions import (
-    NetPulseError,
     TimeoutError as NetPulseTimeoutError,
     ConnectionError as NetPulseConnectionError,
     RetryExhaustedError,

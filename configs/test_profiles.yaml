@@ -1,5 +1,23 @@
 # NetPulse Test Profiles
 
+quick:
+  network:
+    tcp_timeout: 2.0
+    udp_timeout: 1.0
+    http_timeout: 2.0
+    buffer_size: 4096
+  testing:
+    retries: 1
+    duration_seconds: 1.0
+    packet_count: 50
+  performance:
+    duration: 1.0
+    packet_count: 200
+    packet_sizes: [64, 1024, 8192]
+    concurrency: 1
+  logging:
+    level: "INFO"
+
 fast:
   network:
     tcp_timeout: 1.5
@@ -12,8 +30,31 @@ fast:
     retry_initial_delay: 0.05
     packet_count: 20
     duration_seconds: 1.0
+  performance:
+    duration: 1.0
+    packet_count: 100
+    packet_sizes: [64, 1024]
+    concurrency: 1
   logging:
     level: "WARNING"
+
+standard:
+  network:
+    tcp_timeout: 5.0
+    udp_timeout: 3.0
+    http_timeout: 5.0
+    buffer_size: 16384
+  testing:
+    retries: 2
+    packet_count: 100
+    duration_seconds: 5.0
+  performance:
+    duration: 3.0
+    packet_count: 1000
+    packet_sizes: [64, 512, 1024, 4096, 8192]
+    concurrency: 2
+  logging:
+    level: "INFO"
 
 stress:
   network:
@@ -25,6 +66,11 @@ stress:
     retries: 3
     packet_count: 1000
     duration_seconds: 15.0
+  performance:
+    duration: 10.0
+    packet_count: 5000
+    packet_sizes: [64, 128, 512, 1024, 4096, 8192]
+    concurrency: 4
   logging:
     level: "INFO"
 
@@ -39,6 +85,11 @@ ci:
     retry_backoff_factor: 1.5
     retry_initial_delay: 0.1
     packet_count: 50
+  performance:
+    duration: 2.0
+    packet_count: 500
+    packet_sizes: [64, 1024, 8192]
+    concurrency: 1
   logging:
     level: "INFO"
     structured: true
@@ -54,6 +105,11 @@ regression:
     retry_backoff_factor: 1.5
     retry_initial_delay: 0.1
     packet_count: 100
+  performance:
+    duration: 2.0
+    packet_count: 500
+    packet_sizes: [64, 1024, 8192]
+    concurrency: 1
   logging:
     level: "INFO"
 
@@ -66,6 +122,11 @@ debug:
   testing:
     retries: 0
     packet_count: 10
+  performance:
+    duration: 1.0
+    packet_count: 50
+    packet_sizes: [64, 1024]
+    concurrency: 1
   logging:
     level: "DEBUG"
     console: true

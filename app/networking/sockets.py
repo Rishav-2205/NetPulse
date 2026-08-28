@@ -6,8 +6,7 @@ and clean context management.
 """
 
 import socket
-import sys
-from typing import Optional, Tuple
+from typing import Optional
 
 from app.core.exceptions import SocketError
 from app.core.logging import get_logger

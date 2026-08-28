@@ -52,6 +52,12 @@ class SocketError(NetPulseError):
     pass
 
 
+# Convenience aliases to avoid shadowing standard library exceptions
+NetPulseConnectionError = ConnectionError
+NetPulseTimeoutError = TimeoutError
+NetPulseSocketError = SocketError
+
+
 class PacketValidationError(NetPulseError):
     """Raised when packet structure, checksum, or payload integrity fails validation."""
 
